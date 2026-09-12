@@ -1,0 +1,30 @@
+1. Authentication & Calendar OAuth Integration
+To support multiple users, every database record must be tied to a specific user ID, and the app needs a dedicated settings area for third-party API connections.
+
+The UI Component: Remove the "Optimization Status" block entirely. In its place (top right corner), add a User Profile avatar or dropdown menu.
+
+Calendar Linking: Inside this new profile dropdown, add a "Settings" or "Integrations" modal. This is where you place a bold "Link Google Calendar" button.
+
+The OAuth Flow: When clicked, redirect the user to Google's OAuth consent screen. Your Django backend handles the callback, stores the access_token and refresh_token in a GoogleOAuthToken table tied to that user's ID, and immediately fires a background Celery task to fetch their next 30 days of events.
+
+Supabase Auth: Since you are using a React/Next.js frontend with a PostgreSQL database, wrapping the app in Supabase Auth provides instant email/password and social logins, passing a JWT to your Django backend for secure API requests.
+
+2. Fixing Data Synchronization (The Task Visibility Bug)
+If you enter a task in the "New Task" menu and it does not appear in the 3-day calendar view, your frontend state is out of sync with your database, or the task hasn't been assigned a time block yet.
+
+State Invalidation: When the POST /api/tasks request succeeds, your frontend must immediately re-fetch the data for the daily columns. If you are using React, implement a data-fetching library like React Query or SWR. Upon successful task creation, call queryClient.invalidateQueries('schedule') to force the UI to pull the latest truth from the backend.
+
+The Unscheduled Limbo: Your Django models separate Tasks (the work) from StudySessions (the time slot). When a task is created, it has no start_time until the LLM or a default algorithm assigns one. To fix this instantly, either:
+
+Have the "New Task" submission automatically trigger a mini-LLM reshuffle to find it a slot.
+
+Add a default behavior where new tasks are automatically slotted at the end of the current day, allowing the user to drag-and-drop it elsewhere.
+
+3. UI Cleanup & Layout Adjustments
+Based on your instructions and the provided screenshot, these visual changes will streamline the interface:
+
+Remove "Fixed Commitment" Tags: Strip the teal pill-shaped badges from the events on Saturday, Sunday, and Monday. Displaying just the title (e.g., "CS401: Distributed Systems Lecture") alongside a subtle time indicator is enough context. It reduces visual noise.
+
+Rebalance the Top Metrics: With the "Optimization Status" block gone, you have three remaining cards (Scheduled Time, High Focus Blocks, Fixed Events). Adjust their CSS grid or flexbox properties (e.g., flex-1 in Tailwind) so they expand evenly to fill the horizontal space.
+
+Relocate the Refresh Button: The small teal refresh icon next to the "Today" pagination is easy to miss. Consider moving it inside the User Profile menu as "Force Sync" or attaching it directly to the "Active Tasks" counter in the top bar.
